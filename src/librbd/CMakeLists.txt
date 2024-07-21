@@ -80,6 +80,7 @@ set(librbd_internal_srcs
   group/AddImageRequest.cc
   group/ListSnapshotsRequest.cc
   group/RemoveImageRequest.cc
+  group/UnlinkPeerGroupRequest.cc
   image/AttachChildRequest.cc
   image/AttachParentRequest.cc
   image/CloneRequest.cc
