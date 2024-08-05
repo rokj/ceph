@@ -2395,7 +2395,7 @@ int snapshot_add(cls_method_context_t hctx, bufferlist *in, bufferlist *out)
     };
 
   r = image::snapshot::iterate(hctx, pre_check_lambda);
-  if (r < 0) {
+  if (r < 0 && r != -EEXIST) {
     return r;
   }
 
@@ -8847,8 +8847,8 @@ int group_snap_set(cls_method_context_t hctx,
     r = cls_cxx_map_get_val(hctx, key, &snap_bl);
     if (r < 0 && r != -ENOENT) {
       return r;
-    } else if (r >= 0) {
-      return -EEXIST;
+    } else if (r > 0) {
+      return -EINVAL;
     }
 
     std::string last_read = group::snap_order_key("");
