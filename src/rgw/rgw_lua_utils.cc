@@ -15,6 +15,7 @@ namespace rgw::lua {
 // lua_push(lua_State* L, const ceph::real_time& tp)
 
 constexpr const char* RGWDebugLogAction{"RGWDebugLog"};
+constexpr const char* RGWUpdateObjectMetadataAction{"RGWUpdateObjectMetadata"};
 
 int RGWDebugLog(lua_State* L) 
 {
@@ -25,10 +26,33 @@ int RGWDebugLog(lua_State* L)
   return 0;
 }
 
+int RGWUpdateObjectMetadata(lua_State* L)
+{
+    auto cct = reinterpret_cast<CephContext*>(lua_touserdata(L, lua_upvalueindex(1)));
+
+    ldout(cct, 20) << "we should be here " << dendl;
+
+    auto object_name = luaL_checkstring(L, 1);
+    auto object_metadata_key = luaL_checkstring(L, 2);
+    auto object_metadata_value = luaL_checkstring(L, 3);
+
+    ldout(cct, 20) << "lua object_name: " << object_name << dendl;
+    ldout(cct, 20) << "lua object_name key: " << object_metadata_key << dendl;
+    ldout(cct, 20) << "lua object_name value: " << object_metadata_value << dendl;
+
+    return 0;
+}
+
 void create_debug_action(lua_State* L, CephContext* cct) {
   lua_pushlightuserdata(L, cct);
   lua_pushcclosure(L, RGWDebugLog, ONE_UPVAL);
   lua_setglobal(L, RGWDebugLogAction);
+}
+
+void create_update_object_metatdata_action(lua_State* L, CephContext* cct) {
+  lua_pushlightuserdata(L, cct);
+  lua_pushcclosure(L, RGWUpdateObjectMetadata, THREE_UPVALS);
+  lua_setglobal(L, RGWUpdateObjectMetadataAction);
 }
 
 void stack_dump(lua_State* L) {
