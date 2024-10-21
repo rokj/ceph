@@ -21,6 +21,7 @@ namespace rgw::lua::request {
 //    Request.Log()
 //
 constexpr const char* RequestLogAction{"Log"};
+constexpr const char* UpdateObjectMetadataAction{"UpdateObjectMetadata"};
 
 int RequestLog(lua_State* L) 
 {

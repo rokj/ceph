@@ -51,7 +51,7 @@ void create_debug_action(lua_State* L, CephContext* cct) {
 
 void create_update_object_metatdata_action(lua_State* L, CephContext* cct) {
   lua_pushlightuserdata(L, cct);
-  lua_pushcclosure(L, RGWUpdateObjectMetadata, THREE_UPVALS);
+  lua_pushcclosure(L, RGWUpdateObjectMetadata, ONE_UPVAL);
   lua_setglobal(L, RGWUpdateObjectMetadataAction);
 }
 
