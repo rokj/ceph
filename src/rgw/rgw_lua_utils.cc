@@ -81,14 +81,29 @@ int RGWUpdateObjectMetadata(lua_State* L)
     auto tags = attrs.find(RGW_ATTR_TAGS);
     if (tags != attrs.end()){
         ldout(s->cct, 20) << "lua tags" << dendl;
-        ldout(s->cct, 20) << "lua tag second " << tags->second.c_str() << dendl;
+        ldout(s->cct, 20) << "lua TAG second " << tags->second.to_str() << dendl;
+
+        RGWObjTags obj_tags;
+        try {
+            auto it = tags->second.cbegin();
+            ::decode(obj_tags, it);
+        } catch(buffer::error &e) {
+            ldout(s->cct, 20) << "lua tag second error " << e.what() << dendl;
+        }
+        for (auto& tag: obj_tags.get_tags()) {
+            ldout(s->cct, 20) << "tag OBJ tag first " << tag.first << dendl;
+            ldout(s->cct, 20) << "tag OBJ tag second " << tag.second << dendl;
+        }
+        obj_tags.add_tag("test1", "test2");
+
+        bufferlist tags_bl;
+        obj_tags.encode(tags_bl);
+        // tags_bl.append();
+        op_ret = object->modify_obj_attrs(s->obj_ctx, RGW_ATTR_TAGS, tags_bl, s->yield, s);
+
     }
 
     ldout(s->cct, 20) << "lua im here" << dendl;
-
-    bufferlist tags_bl;
-    tags_bl.append("test1=test4");
-    op_ret = object->modify_obj_attrs(s->obj_ctx, RGW_ATTR_TAGS, tags_bl, s->yield, s);
 
     return 0;
 }
