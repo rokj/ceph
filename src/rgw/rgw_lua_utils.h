@@ -7,6 +7,7 @@
 #include <lua.hpp>
 
 #include "include/common_fwd.h"
+#include "rgw_sal.h"
 
 namespace rgw::lua {
 
@@ -193,6 +194,6 @@ void set_package_path(lua_State* L, const std::string& install_dir);
 // and the "debug" library
 void open_standard_libs(lua_State* L);
 
-void create_update_object_metatdata_action(lua_State* L, CephContext* cct);
+void create_update_object_metatdata_action(lua_State* L, rgw::sal::Store* store, req_state* s);
 }
 

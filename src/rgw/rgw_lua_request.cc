@@ -828,7 +828,7 @@ int execute(
       "");
 
   create_debug_action(L, s->cct);
-  create_update_object_metatdata_action(L, s->cct);
+  create_update_object_metatdata_action(L, store, s);
 
   create_metatable<RequestMetaTable>(L, true, s, const_cast<char*>(op_name));
   

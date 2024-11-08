@@ -1147,6 +1147,8 @@ void RGWPutObjTags::execute(optional_yield y)
   }
 
   s->object->set_atomic(s->obj_ctx);
+  std::string content = tags_bl.to_str();
+  ldpp_dout(this, 20) << "lua RGW" << content << dendl;
   op_ret = s->object->modify_obj_attrs(s->obj_ctx, RGW_ATTR_TAGS, tags_bl, y, this);
   if (op_ret == -ECANCELED){
     op_ret = -ERR_TAG_CONFLICT;
