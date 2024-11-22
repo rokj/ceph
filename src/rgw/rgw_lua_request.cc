@@ -21,7 +21,20 @@ namespace rgw::lua::request {
 //    Request.Log()
 //
 constexpr const char* RequestLogAction{"Log"};
-constexpr const char* UpdateObjectMetadataAction{"UpdateObjectMetadata"};
+constexpr const char* UpdateObjectTagsAction{"UpdateObjectTags"};
+
+std::vector<std::string> splitString(const std::string& str, char delimiter) {
+  std::vector<std::string> tokens;
+
+  std::stringstream ss(str);
+  std::string token;
+
+  while (std::getline(ss, token, delimiter)) {
+    tokens.push_back(token);
+  }
+
+  return tokens;
+}
 
 int RequestLog(lua_State* L) 
 {
@@ -38,6 +51,73 @@ int RequestLog(lua_State* L)
   }
 
   return ONE_RETURNVAL;
+}
+
+int UpdateObjectTags(lua_State *L) {
+  int op_ret;
+  auto store = reinterpret_cast<rgw::sal::Store *>(lua_touserdata(L, lua_upvalueindex(1)));
+  auto s = reinterpret_cast<req_state *>(lua_touserdata(L, lua_upvalueindex(2)));
+  std::unique_ptr<rgw::sal::Bucket> bucket;
+
+  ldout(s->cct, 20) << "Lua in UpdateObjectTags start" << dendl;
+
+  int r = store->get_bucket(nullptr, s->user.get(), s->user->get_tenant(), s->bucket_name, &bucket, s->yield);
+  if (r < 0) {
+    ldout(s->cct, 20) << "Lua no bucket, continue" << dendl;
+    return 0;
+  }
+
+  ldout(s->cct, 20) << "Lua bucket" << s->bucket << dendl;
+
+  auto object_name = luaL_checkstring(L, 1);
+  auto tags_value = luaL_checkstring(L, 2);
+
+  if (object_name == nullptr || strlen(object_name) == 0) {
+    ldout(s->cct, 20) << "Lua object_name variable empty" << dendl;
+    return 0;
+  }
+
+  if (tags_value == nullptr || strlen(tags_value) == 0) {
+    ldout(s->cct, 20) << "Lua tags_value variable empty" << dendl;
+    return 0;
+  }
+
+  std::unique_ptr<rgw::sal::Object> object = bucket->get_object(std::string(object_name));
+
+  ldout(s->cct, 20) << "Lua object_name " << object_name << dendl;
+  ldout(s->cct, 20) << "Lua tags_value " << tags_value << dendl;
+
+  RGWObjTags obj_tags;
+
+  auto tags = splitString(tags_value, '&');
+  for (auto &tag : tags) {
+    auto t = splitString(tag, '=');
+    if (t.size() > 1) {
+      std::string key = t[0];
+      std::string value = t[1];
+
+      ldout(s->cct, 20) << "Lua tag key " << key << dendl;
+      ldout(s->cct, 20) << "Lua tag value " << value << dendl;
+
+      op_ret = obj_tags.check_and_add_tag(key, value);
+      if (op_ret < 0) {
+        ldout(s->cct, 20) << "Lua could not add tag to obj_tags with key " << key << " and value " << value << dendl;
+      }
+    }
+  }
+
+  object->set_atomic(s->obj_ctx);
+  bufferlist tags_bl;
+  obj_tags.encode(tags_bl);
+  op_ret = object->modify_obj_attrs(s->obj_ctx, RGW_ATTR_TAGS, tags_bl, s->yield, s);
+  if (op_ret < 0) {
+    ldout(s->cct, 20) << "Lua could set RGW_ATTR_TAGS in UpdateObjectTags for object " << object_name << dendl;
+    return 0;
+  }
+
+  ldout(s->cct, 20) << "Lua in UpdateObjectTags end" << dendl;
+
+  return 0;
 }
 
 struct ResponseMetaTable : public EmptyMetaTable {
@@ -810,6 +890,14 @@ struct RequestMetaTable : public EmptyMetaTable {
   }
 };
 
+void create_update_object_tags_action(lua_State* L, rgw::sal::Store* store, req_state* s) {
+  lua_pushlightuserdata(L, store);
+  lua_pushlightuserdata(L, s);
+
+  lua_pushcclosure(L, UpdateObjectTags, TWO_UPVALS);
+  lua_setglobal(L, UpdateObjectTagsAction);
+}
+
 int execute(
     rgw::sal::Store* store,
     RGWREST* rest,
@@ -828,7 +916,7 @@ int execute(
       "");
 
   create_debug_action(L, s->cct);
-  create_update_object_metatdata_action(L, store, s);
+  create_update_object_tags_action(L, store, s);
 
   create_metatable<RequestMetaTable>(L, true, s, const_cast<char*>(op_name));
   
